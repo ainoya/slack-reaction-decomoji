@@ -3,7 +3,7 @@
 require 'find'
 require 'yaml'
 
-images = Find.find('./').grep(/.png/).reject{|f| f =~ /_/}
+images = Find.find(ARGV[0]).grep(/.png/).reject{|f| f =~ /_/}
 
 
 commands = images.map{|f| "convert -geometry 128x128! #{f} #{f.sub('.png', '.jpg')}"}
