@@ -58,19 +58,27 @@ class Importer
     @assets = YAML.load_file(@assets_path)
 
     @assets['emojis'].each do |emoji|
-      src = URI.parse(emoji['src'])
 
       # skip if already exists
       next if page.body.include?(":#{emoji['name']}:")
 
-      puts "importing #{emoji['name']}..."
+      puts "importing :#{emoji['name']}: ..."
 
       form = page.form_with(action: '/customize/emoji')
       form['name'] = emoji['name']
-      form.file_upload.file_name = File.basename(src.path)
-      form.file_upload.file_data = HTTParty.get(src)
+
+      src = URI.parse(emoji['src'])
+
+      if File.exists?(emoji['src'])
+        form.file_upload.file_name = File.expand_path(emoji['src'])
+      else
+        form.file_upload.file_name = File.basename(src.path)
+        form.file_upload.file_data = HTTParty.get(src)
+      end
+
       @page = form.submit
     end
+
   end
 end
 
