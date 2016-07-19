@@ -1,5 +1,7 @@
 require 'highline/import'
 require 'mechanize'
+require 'yaml'
+require 'httparty'
 
 # Decomoji Importer
 class Importer
@@ -8,6 +10,7 @@ class Importer
   def initialize
     @page = nil
     @agent = Mechanize.new
+    @assets_path
   end
   attr_accessor :page, :agent
 
@@ -22,6 +25,7 @@ class Importer
     team_name  = ask('Your slack team name(subdomain): ')
     email      = ask('Login email: ')
     password   = ask('Login password(hidden): ') { |q| q.echo = false }
+    @assets_path = ask('Path of Emoji yaml file: ')
 
     emoji_page_url = "https://#{team_name}.slack.com/admin/emoji"
 
@@ -51,17 +55,20 @@ class Importer
   end
 
   def upload_decomojis
-    Dir.glob("#{BASE_DIR}/decomoji/*.png").each do |path|
-      basename = File.basename(path, '.*')
+    @assets = YAML.load_file(@assets_path)
+
+    @assets['emojis'].each do |emoji|
+      src = URI.parse(emoji['src'])
 
       # skip if already exists
-      next if page.body.include?(":#{basename}:")
+      next if page.body.include?(":#{emoji['name']}:")
 
-      puts "importing #{basename}..."
+      puts "importing #{emoji['name']}..."
 
       form = page.form_with(action: '/customize/emoji')
-      form['name'] = basename
-      form.file_upload.file_name = path
+      form['name'] = emoji['name']
+      form.file_upload.file_name = File.basename(src.path)
+      form.file_upload.file_data = HTTParty.get(src)
       @page = form.submit
     end
   end
